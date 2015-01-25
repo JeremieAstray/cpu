@@ -15,23 +15,23 @@ entity MemAccessEntity is
 			m_ALUOut	: in word;    -- Memory addr
 			m_RBdata	: in word;		
 			wr			: out std_logic; --内存读写控制 '1':read , '0':write
-			OuterDB		: inout word;
+			OuterDB		: inout std_logic_vector(15 downto 0);
 			w_ALUOut	: out word;	
 			w_MemOut	: out word;	
 			m_flag		: in  std_logic_vector(3 downto 0);	 
 			w_flag		: out  std_logic_vector(3 downto 0); 
 			PC          : in  word;  --PC输入
-			addr        : out word;  --输出到内存地址线
+			addr        : out std_logic_vector(15 downto 0);  --输出到内存地址线
 			--*** for Forwarding	
-			m_SA		: in std_logic_vector(3 downto 0);
-			w_SA		: out std_logic_vector(3 downto 0);	 					
+			m_SA		: in std_logic_vector(1 downto 0);
+			w_SA		: out std_logic_vector(1 downto 0);	 					
 			--*** for WB Reg
 			m_wRegEn  	: in std_logic; 
-			m_destReg 	: in std_logic_vector(3 downto 0); 
+			m_destReg 	: in std_logic_vector(1 downto 0); 
 			m_memToReg  : in std_logic;				
 			--*** for WB Reg
 			w_wRegEn 	: out std_logic; 
-			w_destReg	: out std_logic_vector(3 downto 0); 
+			w_destReg	: out std_logic_vector(1 downto 0); 
 			w_memToReg  : out std_logic
 		);
 end entity ;
@@ -42,15 +42,15 @@ begin
 	process(clk,m_wrMem,m_ALUOut,m_RBdata,PC)
 	begin	 
 		case m_wrMem is
-			when "00" 	=>  addr <= m_ALUout;	
+			when "00" 	=>  addr <= x"00"&m_ALUout;	
 			                wr <= '0';  -- write Memory																											
-							OuterDB <= m_RBdata;							
+							OuterDB <= x"00"&m_RBdata;							
 			when "01"   =>  wr <= '1';	
-			                addr <= m_ALUout;
-							OuterDB <= Z16; --MODIFY AT 09_04_20_45 PRE:M_RBDATA
+			                addr <= x"00"&m_ALUout;
+							OuterDB <= x"00"&Z16; --MODIFY AT 09_04_20_45 PRE:M_RBDATA
 			when others =>	wr <= '1';	  
-			                addr <= PC;
-			                OuterDB <= Z16;
+			                addr <= x"00"&PC;
+			                OuterDB <= x"00"&Z16;
 		end case;
 	end process;		
 	--***************************************
@@ -67,7 +67,7 @@ begin
 			w_wRegEn <= m_wRegEn;
 			w_destReg<= m_destReg;
 			w_memToReg<= m_memToReg;  
-			w_memOut  <= OuterDB;
+			w_memOut  <= OuterDB(7 downto 0);
 			w_wrMem  <= m_wrMem;
 		end if;
 	end process;

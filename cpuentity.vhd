@@ -16,8 +16,8 @@ entity CPUEntity is
 			memAddr	:out	std_logic_vector(15 downto 0);--内存地址线 			
 			wr		:out 	std_logic;                    --内存读写使能
 			flag    :out    std_logic_vector(3 downto 0); --状态位CZVS					
-			RegSel	:in		std_logic_vector(5 downto 0); --寄存器选择					
-			RegOut	:out	std_logic_vector(15 downto 0) --寄存器值输出
+			RegSel	:in		std_logic_vector(3 downto 0); --寄存器选择					
+			RegOut	:out	std_logic_vector(7 downto 0) --寄存器值输出
 		);
 end CPUEntity;
 
@@ -31,13 +31,13 @@ architecture CPUArch of CPUEntity is
 	signal  s_PCInc1        : word;
 	signal  s_d_IR			: word;	 	
 	signal  s_w_WBData		: word;
-	signal  s_w_destReg		: std_logic_vector(3 downto 0);
+	signal  s_w_destReg		: std_logic_vector(1 downto 0);
 	signal  s_w_wRegEn		: std_logic;   
-	signal  s_RegSel		: std_logic_vector(3 downto 0);
+	signal  s_RegSel		: std_logic_vector(1 downto 0);
 	signal  s_RegOut		: word;		
 	--*** to Ex Unit
-	signal  s_e_SA			: std_logic_vector(3 downto 0);
-	signal  s_e_SB			: std_logic_vector(3 downto 0);	
+	signal  s_e_SA			: std_logic_vector(1 downto 0);
+	signal  s_e_SB			: std_logic_vector(1 downto 0);	
 	signal  s_e_RAOut		: word;
     signal  s_e_RBOut		: word;
 	signal  s_e_IMM			: word;
@@ -46,7 +46,7 @@ architecture CPUArch of CPUEntity is
 	signal  s_e_SetFlag     : std_logic_vector(2 downto 0);
     signal	s_e_wrMem		: std_logic_vector(1 downto 0);
     signal	s_e_wRegEn      : std_logic;
-	signal  s_e_destReg		: std_logic_vector(3 downto 0);
+	signal  s_e_destReg		: std_logic_vector(1 downto 0);
 	signal  s_e_MemToReg    : std_logic;
 	signal  s_forwardA		: std_logic_vector(1 downto 0);
 	signal  s_forwardB		: std_logic_vector(1 downto 0);	   
@@ -57,11 +57,11 @@ architecture CPUArch of CPUEntity is
 	signal  s_m_wrMem 		: std_logic_vector(1 downto 0);
 	signal  s_m_wRegEn		: std_logic;
 	signal  s_m_memToReg	: std_logic;
-	signal  s_m_destReg		: std_logic_vector(3 downto 0);	
+	signal  s_m_destReg		: std_logic_vector(1 downto 0);	
 	--*** to Forwarding Unit  
 	signal 	s_w_ALUOut		 : word; 		
-	signal  s_m_SA			 : std_logic_vector(3 downto 0); 
-	signal  s_w_SA			 : std_logic_vector(3 downto 0);	
+	signal  s_m_SA			 : std_logic_vector(1 downto 0); 
+	signal  s_w_SA			 : std_logic_vector(1 downto 0);	
 	--*** to WB Unit  
 	signal s_w_memToReg	     : std_logic;  --选择回写的数据源(s_w_ALUOut、OuterDB) 
 	signal s_m_flag          : std_logic_vector(3 downto 0);
@@ -82,7 +82,7 @@ architecture CPUArch of CPUEntity is
 			PCPlusOffset: in  word;			--PC + Offset
 			PCStall 	: in  std_logic;	--'1' : PC 保持不变  
 			IFFlush		: in  std_logic;    --'1' : NOP->IR	 
-			OuterDB		: in  word;	
+			OuterDB		: in  std_logic_vector(15 downto 0);	
 			PC_addr		: out word; 	    --PC作为内存地址输出,用于下一节拍的取指
 			d_PCInc1 	: out word;			--PC + 1
 			d_IR   		: out word 			--指令寄存器输出          	
@@ -96,9 +96,9 @@ architecture CPUArch of CPUEntity is
 			d_PCInc1 : in word;	
 			--*** for Regs Bank	 
 			w_WBData  : in word;	 			
-			w_destReg : in std_logic_vector(3 downto 0);  -- Destination Reg index
+			w_destReg : in std_logic_vector(1 downto 0);  -- Destination Reg index
 			w_wRegEn  : in std_logic;  -- '1' enable   			
-			e_SA,e_SB	: out std_logic_vector(3 downto 0);	
+			e_SA,e_SB	: out std_logic_vector(1 downto 0);	
 			i_PCPlusOffset : out word;
 			--*** for ALU	 
 			e_RAOut,e_RBOut	: out word;	
@@ -110,10 +110,10 @@ architecture CPUArch of CPUEntity is
 			e_wrMem	: out std_logic_vector(1 downto 0); --"00" write, "01" read, "1-" do nothing
 			--*** for Regs
 			e_wRegEn  : out  std_logic;		--寄存器写使能 
-			e_destReg : out  std_logic_vector(3 downto 0); 
+			e_destReg : out  std_logic_vector(1 downto 0); 
 			e_MemToReg : out std_logic;	    --内存写入寄存器使能  			
 			--Cpu Interface ---------------------------------
-			RegSel 	: in std_logic_vector(3 downto 0);
+			RegSel 	: in std_logic_vector(1 downto 0);
 			RegOut	: out word
 			);
 	end component ;	 
@@ -129,8 +129,8 @@ architecture CPUArch of CPUEntity is
 					
 		    forwardA,forwardB  : in  std_logic_vector(1 downto 0);	
 			--*** for Forwarding  
-			e_SA		: in std_logic_vector(3 downto 0);
-			m_SA    	: out std_logic_vector(3 downto 0);		
+			e_SA		: in std_logic_vector(1 downto 0);
+			m_SA    	: out std_logic_vector(1 downto 0);		
 			
 			e_ALUOut  	: in word;
 			w_WBdata  	: in word;			
@@ -144,8 +144,8 @@ architecture CPUArch of CPUEntity is
 			m_wRegEn 	: out std_logic; 
 			e_memToReg  : in std_logic;
 			m_memToReg  : out std_logic;
-			e_destReg 	: IN  std_logic_vector(3 downto 0); 
-			m_destReg 	: out std_logic_vector(3 downto 0);			
+			e_destReg 	: IN  std_logic_vector(1 downto 0); 
+			m_destReg 	: out std_logic_vector(1 downto 0);			
 			e_wrMem		: IN std_logic_vector(1 downto 0); --"00" write, "01" read, "1-" do nothing  			
 			m_wrMem	  	: out std_logic_vector(1 downto 0) --"00" write, "01" read, "1-" do nothing					
 		);
@@ -158,7 +158,7 @@ architecture CPUArch of CPUEntity is
 			m_ALUOut	: in word;    -- Memory addr
 			m_RBdata	: in word;
 			wr			: out std_logic; --内存读写控制 '1':read , '0':write
-			OuterDB		: inout word;
+			OuterDB		: inout std_logic_vector(15 downto 0);
 			w_ALUOut	: out word;	
 			w_MemOut	: out word;
 			-----------------
@@ -166,20 +166,20 @@ architecture CPUArch of CPUEntity is
 			w_flag		: out std_logic_vector(3 downto 0);
 			----------
 			PC          : in  word;
-			addr        : out word;
+			addr        : out std_logic_vector(15 downto 0);
 			----------
 			--*** for Forwarding 
-			m_SA		: in std_logic_vector(3 downto 0);
-			w_SA		: out std_logic_vector(3 downto 0);	
+			m_SA		: in std_logic_vector(1 downto 0);
+			w_SA		: out std_logic_vector(1 downto 0);	
 			
 			--*** for WB Reg
 			m_wRegEn  	: in std_logic; 
-			m_destReg 	: in std_logic_vector(3 downto 0); 
+			m_destReg 	: in std_logic_vector(1 downto 0); 
 			m_memToReg  : in std_logic;
 			
 			--*** for WB Reg
 			w_wRegEn 	: out std_logic; 
-			w_destReg	: out std_logic_vector(3 downto 0); 
+			w_destReg	: out std_logic_vector(1 downto 0); 
 			w_memToReg  : out std_logic
 		);
 	end component;
@@ -187,10 +187,10 @@ architecture CPUArch of CPUEntity is
 	component ForwardingEntity	is     --数据相关检测及傍路处理模块
 	port(	m_wRegEn		: in  std_logic;
 			w_wRegEn		: in  std_logic;
-			m_SA			: in  std_logic_vector(3 downto 0);
-			w_SA			: in  std_logic_vector(3 downto 0);
-			e_SA			: in  std_logic_vector(3 downto 0);
-			e_SB			: in  std_logic_vector(3 downto 0);				
+			m_SA			: in  std_logic_vector(1 downto 0);
+			w_SA			: in  std_logic_vector(1 downto 0);
+			e_SA			: in  std_logic_vector(1 downto 0);
+			e_SB			: in  std_logic_vector(1 downto 0);				
 			forwardA		: out std_logic_vector(1 downto 0);	
 			forwardB		: out std_logic_vector(1 downto 0)
 		);
@@ -335,9 +335,9 @@ begin
 	process(RegSel,s_d_IR,s_PCAddr,s_RegOut)
 	begin
 		case RegSel is
-		when "111111" => RegOut <= s_d_IR;
-		when "111110" => RegOut <= s_PCAddr; 
-		when others   => s_RegSel <= RegSel(3 downto 0);  RegOut <= s_RegOut;
+		when "1111" => RegOut <= s_d_IR;
+		when "1110" => RegOut <= s_PCAddr; 
+		when others   => s_RegSel <= RegSel(1 downto 0);  RegOut <= s_RegOut;
 		end case;
 	end process;
 	-------	

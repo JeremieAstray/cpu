@@ -18,7 +18,7 @@ entity IFEntity is
 			PCPlusOffset: in  word;			--PC + Offset
 			PCStall 	: in  std_logic;	--'1' : PC 保持不变  
 			IFFlush		: in  std_logic;    --'1' : NOP->IR	 
-			OuterDB		: in  word;	   
+			OuterDB		: in  std_logic_vector(15 downto 0);	   
 			PC_addr		: out word; 	    --PC作为内存地址输出,用于下一节拍的取指
 			d_PCInc1 	: out word;			--PC + 1
 			d_IR   		: out word 			--指令寄存器输出          	
@@ -26,35 +26,30 @@ entity IFEntity is
 end IFEntity; 
 
 architecture IFArch of IFEntity is
-	signal PC,IR		: std_logic_vector(15 downto 0);
+	signal PC,IR		: std_logic_vector(7 downto 0);
 	signal PCIncSel		: std_logic; 
-	signal s_PCInc1,PCnext : std_logic_vector(15 downto 0);	
-	signal op		: std_logic_vector(7 downto 0);
+	signal s_PCInc1,PCnext : std_logic_vector(7 downto 0);	
+	signal op		: std_logic_vector(3 downto 0);
 	signal s_flag   : std_logic_vector(3 downto 0);
 	signal s_selZ,s_selC : std_logic;
 	signal ZZ,CC : std_logic;
 begin 	
  	--程序计数器控制 *****************************************	
-    op <= IR(15 downto 8);	--操作码		
+    op <= IR(7 downto 4);	--操作码		
 	with e_setFlag select 
 		ZZ <=  Z		when flag_hold,
 			   tempZ    when others;
 	with e_setFlag select 
 		CC <=  C		when flag_hold,
 			   tempC    when others;
-	s_selZ <= '1' WHEN( op=JRZ  AND ZZ='1')  --判断是否跳转
-	 			   OR ( op=JRNZ AND ZZ='0')
-	               OR op=JR
-	              else
-	          '0'; 	
-	s_selC <= '1' WHEN( op=JRC  AND CC='1')  --判断是否跳转
-	 			   OR ( op=JRNC AND CC='0')
+	s_selZ <= '1' WHEN (op=JR and ZZ='1')  --判断是否跳转
+						or (op=JNR and ZZ='0')
 	              else
 	          '0'; 		 		
  	PCIncSel <= '1'  WHEN s_selZ='1' or s_selC='1'  	 				 
 				      ELSE
  			    '0';
- 	s_PCInc1 <= PC + x"0001";		        
+ 	s_PCInc1 <= PC + x"01";		        
  	WITH PCIncSel SELECT
  			PCnext <= s_PCInc1 	    WHEN '0',
  				      PCPlusOffset  WHEN '1',                    
@@ -63,7 +58,7 @@ begin
 	process(reset,clk,PCStall)
 	begin
 		if reset = '0' then
-			PC <= x"0000";								 
+			PC <= x"00";								 
 		elsif FALLING_EDGE(clk) and (PCStall='0') then	 
 		    PC <= PCnext;
 		end if;
@@ -79,7 +74,7 @@ begin
 			IR <= NopIns;	-- NULL operation 
 		elsif RISING_EDGE(clk) then
 			case IFFlush is
-				when '0' 	=> IR <= OuterDB;
+				when '0' 	=> IR <= OuterDB(7 downto 0);
 				when others => IR <= NOPIns;
 			end case;
 			d_PCInc1 <= s_PCInc1;

@@ -18,8 +18,8 @@ entity ExEntity is
 			e_IMM				: in word;			
 		    forwardA,forwardB	: in  std_logic_vector(1 downto 0);--傍路选择	
 			--*** for Forwarding  
-			e_SA				: in std_logic_vector(3 downto 0);
-			m_SA    			: out std_logic_vector(3 downto 0);				
+			e_SA				: in std_logic_vector(1 downto 0);
+			m_SA    			: out std_logic_vector(1 downto 0);				
 			e_ALUOut  			: in word;
 			w_WBdata  			: in word;			
 			m_ALUOut			: out word;
@@ -32,8 +32,8 @@ entity ExEntity is
 			m_wRegEn 			: out std_logic; 
 			e_memToReg  		: in std_logic;
 			m_memToReg  		: out std_logic;
-			e_destReg 			: IN  std_logic_vector(3 downto 0); 
-			m_destReg 			: out std_logic_vector(3 downto 0);			
+			e_destReg 			: IN  std_logic_vector(1 downto 0); 
+			m_destReg 			: out std_logic_vector(1 downto 0);			
 			e_wrMem				: IN std_logic_vector(1 downto 0); --"00" write, "01" read, "1-" do nothing  			
 			m_wrMem	  			: out std_logic_vector(1 downto 0) --"00" write, "01" read, "1-" do nothing					
 		);
@@ -58,40 +58,40 @@ begin
 				   e_RBOut  when others;
 	--******************************************
 	ALUActivity:process(ALUaIn,ALUbIn,e_ALUSrc,e_ALUOpr,e_setFlag,e_IMM,tempFlag)
-	variable ALUResult,opR,opS : std_logic_vector(16 downto 0); -- 17 bits	
+	variable ALUResult,opR,opS : std_logic_vector(8 downto 0); -- 17 bits	
 	variable cx,tempC,tempZ,tempV,tempS : std_logic; 	
 	begin
 		case e_ALUSrc is  --选择ALU的两入口数据
 			when selA0	=>	opR := '0'&ALUaIn;	opS := ZERO17;
 			when selAB	=>	opR := '0'&ALUaIn;	opS := '0'&ALUbIn;
-			when selA1	=>	opR := '0'&ALUaIn;	opS := '0'&(X"0001");
+			when selA1	=>	opR := '0'&ALUaIn;	opS := '0'&(X"01");
             when sel0B	=>	opR := ZERO17	;	opS := '0'&ALUbIn;
-			when selAF	=>	opR := '0'&ALUaIn;	opS := '1'&(X"FFFF");
+			when selAF	=>	opR := '0'&ALUaIn;	opS := '1'&(X"FF");
 			when selAD	=>	opR := '0'&ALUaIn;	opS := '0'&e_IMM;				
 			when others =>  opR := ZERO17;		opS := ZERO17;
 		end case;
 		case e_ALUOpr is  --选择ALU的运算
 			when aluAdd	  => ALUResult := opR + opS;
-							 tempV := ((not opR(15))and(not opS(15))and ALUResult(15)) or (opR(15)and opS(15)and (not ALUResult(15)));  				
+							 tempV := ((not opR(7))and(not opS(7))and ALUResult(7)) or (opR(7)and opS(7)and (not ALUResult(7)));  				
 			when aluSub	  => ALUResult := opR - opS;
-							 tempV := ( opS(15)and(not opR(15))and (not ALUResult(15))) or ((NOT opS(15))and opR(15)and ALUResult(15));  				
+							 tempV := ( opS(7)and(not opR(7))and (not ALUResult(7))) or ((NOT opS(7))and opR(7)and ALUResult(7));  				
 			when aluAnd	  => ALUResult := opR and opS;
 			when aluOr	  => ALUResult := opR or  opS;
 			when aluXor	  => ALUResult := opR xor opS;
-			when aluShl	  => ALUResult(15 downto 1) := opR(14 downto 0);
-							 ALUResult(0) := '0';	cx := opR(15);
-			when aluShr	  => ALUResult(14 downto 0) := opR(15 downto 1);
-							 ALUResult(15) := '0';	cx := opR(0); 
-			when aluSar	  => ALUResult(14 downto 0) := opR(15 downto 1);
-							 ALUResult(15) := opR(15); cx := opR(0);	
-			when aluLOADH => ALUResult := opS(8 downto 0)&opR(7 downto 0); 
-			when aluLOADL => ALUResult := '0'&opR(15 downto 8)&opS(7 downto 0);
+			when aluShl	  => ALUResult(7 downto 1) := opR(6 downto 0);
+							 ALUResult(0) := '0';	cx := opR(7);
+			when aluShr	  => ALUResult(6 downto 0) := opR(7 downto 1);
+							 ALUResult(7) := '0';	cx := opR(0); 
+			when aluSar	  => ALUResult(6 downto 0) := opR(7 downto 1);
+							 ALUResult(7) := opR(7); cx := opR(0);	
+			when aluLOADH => ALUResult := opS(4 downto 0)&opR(3 downto 0); 
+			when aluLOADL => ALUResult := '0'&opR(7 downto 4)&opS(3 downto 0);
 			when others   => null;
 		end case; 	
-		dout <= ALUResult(15 downto 0);		
+		dout <= ALUResult(7 downto 0);		
 		------- Set Flag ------------------------------------------
 		case e_ALUOpr is
-			when aluAdd|aluSub            =>   tempC := ALUResult(16);			
+			when aluAdd|aluSub            =>   tempC := ALUResult(8);			
 			when aluShl|aluShr|aluSar     =>   tempC := cx;	
 			when aluAnd|aluOr|aluXor 	  =>   tempC := '0'; tempV:= '0'; --逻辑运算,状态位C,Z置零
 			when others					  =>   null;						
@@ -100,7 +100,7 @@ begin
 		if ALUResult = ZERO17 then	tempZ := '1';
 		else tempZ := '0';	end if;	 
 		i_tempZ <= tempZ;
-		tempS := ALUResult(15);			
+		tempS := ALUResult(7);			
 		case e_setFlag is
 			when flag_hold	  => (C,Z,V,S)<= tempFLAG; 
 			when flag_update  => C<=tempC;	Z <= tempZ;	V <= tempV;	S <= tempS;

@@ -9,10 +9,10 @@ use IEEE.std_logic_1164.all;
 entity ForwardingEntity	is
 	port(	m_wRegEn		: in  std_logic;
 			w_wRegEn		: in  std_logic;
-			m_SA			: in  std_logic_vector(3 downto 0);
-			w_SA			: in  std_logic_vector(3 downto 0);
-			e_SA			: in  std_logic_vector(3 downto 0);
-			e_SB			: in  std_logic_vector(3 downto 0);				
+			m_SA			: in  std_logic_vector(1 downto 0);
+			w_SA			: in  std_logic_vector(1 downto 0);
+			e_SA			: in  std_logic_vector(1 downto 0);
+			e_SB			: in  std_logic_vector(1 downto 0);				
 			forwardA		: out std_logic_vector(1 downto 0);	
 			forwardB		: out std_logic_vector(1 downto 0)
 		); 

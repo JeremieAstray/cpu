@@ -16,9 +16,9 @@ entity IDEntity is
 			d_PCInc1 		: in word;	 
 			--*** for Regs Bank	 
 			w_WBData  		: in word;	 			
-			w_destReg 		: in std_logic_vector(3 downto 0);  -- Destination Reg index
+			w_destReg 		: in std_logic_vector(1 downto 0);  -- Destination Reg index
 			w_wRegEn  		: in std_logic;  					--寄存器写使能   			
-			e_SA,e_SB		: out std_logic_vector(3 downto 0);	
+			e_SA,e_SB		: out std_logic_vector(1 downto 0);	
 			i_PCPlusOffset	: out word;
 			--*** for ALU	 
 			e_RAOut,e_RBOut	: out word;	 						--寄存器A,B输出
@@ -30,10 +30,10 @@ entity IDEntity is
 			e_wrMem	: out std_logic_vector(1 downto 0); --"00" write, "01" read, "1-" do nothing
 			--*** for Regs
 			e_wRegEn  : out  std_logic;		--寄存器写使能 
-			e_destReg : out  std_logic_vector(3 downto 0); 
+			e_destReg : out  std_logic_vector(1 downto 0); 
 			e_MemToReg : out std_logic;	    --内存写入寄存器使能 			
 			--Cpu Interface ---------------------------------
-			RegSel 	: in std_logic_vector(3 downto 0);
+			RegSel 	: in std_logic_vector(1 downto 0);
 			RegOut	: out word
 			);
 end entity ;
@@ -42,7 +42,7 @@ architecture IDArch of IDEntity is
 	SIGNAL RegArray			: REGISTERARRAY; 	-- Regs Array
     signal wRegIndex,ia,ib	: INDEXTYPE;	
 	--译码生成的控制信号
-	signal SA,SB			: std_logic_vector(3 downto 0);
+	signal SA,SB			: std_logic_vector(1 downto 0);
 	signal wrMem			: std_logic_vector(1 downto 0);
 	signal wRegEn			: std_logic;
 	signal memToReg			: std_logic;   
@@ -63,8 +63,8 @@ begin
 	WriteBack:process(reset,clk)   
 	begin	   	
 	    if reset='0' then
-		    RegArray(0) <= x"0000";
-		    RegArray(2) <= x"0000";
+		    RegArray(0) <= x"00";
+		    RegArray(2) <= x"00";
 		elsif FALLING_EDGE(clk) and w_wRegEn='1' then
 			RegArray(wRegIndex) <= w_WBData;
 		end if;	 
@@ -72,37 +72,33 @@ begin
 	--*******************************************	
 	--译码模块		
 	Decode_Pro:process(d_IR) 
-	variable op  : std_logic_vector(7 downto 0);
-	variable ctrl:std_logic_vector(21 downto 0);
+	variable op  : std_logic_vector(3 downto 0);
+	variable ctrl:std_logic_vector(17 downto 0);
 	begin 
-		op := d_IR(15 downto 8);  --操作码 
+		op := d_IR(7 downto 4);  --操作码 
 	    --译码产生的信号:SA,SB,Wrmem,wRegEn,MemToReg,ALUSrc,ALUOpr,SetFlag   
 		case op is
-			when ADD	=> ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"001"&"0000"&"001";
-			when SUBB 	=> ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"001"&"0001"&"001";
-			when DEC    => ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"100"&"0000"&"001";
-			when INC    => ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"010"&"0000"&"001";
-			when ANDins => ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"001"&"0010"&"001";
-			when CMP 	=> ctrl:=d_IR(7 downto 0)&"10"&"0"&"1"&"001"&"0001"&"001";
-			when TEST 	=> ctrl:=d_IR(7 downto 0)&"10"&"0"&"1"&"001"&"0010"&"001";
-			when ORins	=> ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"001"&"0011"&"001";
-			when XORins	=> ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"001"&"0100"&"001";
-			when SHLIns => ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"000"&"0101"&"001";
-			when SHRIns => ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"000"&"0110"&"001";
-			when SAR 	=> ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"000"&"0111"&"001";
-			when MOV 	=> ctrl:=d_IR(7 downto 0)&"10"&"1"&"1"&"011"&"0000"&"000";
-			when LOADH	=> ctrl:="11111111"&"10"&"1"&"1"&"101"&"1000"&"000";	
-						   imm <= "00000000"&d_IR(7 downto 0);	
-			when LOADL	=> ctrl:="11111111"&"10"&"1"&"1"&"101"&"1001"&"000"; 
-						   imm <= "00000000"&d_IR(7 downto 0);
-			when LOAD 	=> ctrl:=d_IR(7 downto 0)&"01"&"1"&"0"&"011"&"0000"&"000";
-			when STORE	=> ctrl:=d_IR(7 downto 0)&"00"&"0"&"1"&"000"&"0000"&"000";			
-			when JR|JRZ|JRNZ|JRC|JRNC =>  ctrl:=DoNothing; --若是JR*指令,计算offset，并向Exe插入Bubble
-					            offset <= d_IR(7)&d_IR(7)&d_IR(7)&d_IR(7)&d_IR(7)&d_IR(7)&d_IR(7)&d_IR(7)&d_IR(7 downto 0);	 		   	
+			when ADD	=> ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"001"&"0000"&"001";
+			when SUBB 	=> ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"001"&"0001"&"001";
+			when DEC    => ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"100"&"0000"&"001";
+			when INC    => ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"010"&"0000"&"001";
+			when ANDins => ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"001"&"0010"&"001";
+			when CMP 	=> ctrl:=d_IR(3 downto 0)&"10"&"0"&"1"&"001"&"0001"&"001";
+			--when TEST 	=> ctrl:=d_IR(3 downto 0)&"10"&"0"&"1"&"001"&"0010"&"001";
+			when ORins	=> ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"001"&"0011"&"001";
+			when XORins	=> ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"001"&"0100"&"001";
+			when MOV 	=> ctrl:=d_IR(3 downto 0)&"10"&"1"&"1"&"011"&"0000"&"000";
+			when LOADH	=> ctrl:="1111"&"10"&"1"&"1"&"101"&"1000"&"000";	
+						   imm <=x"0"&d_IR(3 downto 0);
+			when LOADL	=> ctrl:="1111"&"10"&"1"&"1"&"101"&"1001"&"000"; 
+						   imm <=x"0"&d_IR(3 downto 0);
+			when LOAD 	=> ctrl:=d_IR(3 downto 0)&"01"&"1"&"0"&"011"&"0000"&"000";		
+			when JR|JNR =>  ctrl:=DoNothing; --若是JR*指令,计算offset，并向Exe插入Bubble
+					            offset <= d_IR(3)&d_IR(3)&d_IR(3)&d_IR(3)&d_IR(3 downto 0);	    	
 			when others => ctrl:=DoNothing;
 		 end case;
-		SA 		<= ctrl(21 downto 18);
-		SB 		<= ctrl(17 downto 14);
+		SA 		<= ctrl(17 downto 16);
+		SB 		<= ctrl(15 downto 14);
 		WrMem 	<= ctrl(13 downto 12);
 		wRegEn 	<= ctrl(11);
 		MemToReg<= ctrl(10);

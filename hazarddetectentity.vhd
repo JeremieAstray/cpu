@@ -20,9 +20,9 @@ end entity ;
 architecture HazardDetectArch of HazardDetectEntity is
 begin
 	process(m_wrMem,d_IR)
-	variable d_op : std_logic_vector(7 downto 0);
+	variable d_op : std_logic_vector(3 downto 0);
 	begin
-		d_op := d_IR(15 downto 8);
+		d_op := d_IR(7 downto 4);
 		case m_wrmem is
 			when "00"|"01" => IFFlush <= '1';    --访存和取指冲突
 							  if w_wrMem="00" or w_wrMem="01" then
@@ -31,8 +31,6 @@ begin
 								PCStall <= '0';
 							  end if;
 			when others    => case d_op is       --访存和取指不冲突
-							  	when LOAD  => IFFlush <= '1';
-								  			  PCStall <= '0';   
 								when NOP   => PCStall <='1';	
 								  			  IFFlush <= '0';  										
 								when others=> IFFlush <= '0';
